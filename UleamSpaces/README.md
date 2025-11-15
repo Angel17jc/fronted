@@ -249,3 +249,4 @@ Universidad Laica Eloy Alfaro de Manabí (ULEAM)
 - Clientes ya preparados: `client/src/api/rest/*`, `client/src/api/graphql/*`, `client/src/api/websocket/*` y hooks (`useWebSocket`, `useNotificaciones`).
 - Scripts npm: `npm run dev` (solo Vite), `npm run build`, `npm run preview`.
 - El router (`client/src/router/AppRouter.tsx`) protege rutas privadas con AuthContext y deja solo `/login` como pública.
+- Rutas protegidas: `/app/*` (usuarios/admin) y `/admin/*` (solo admin). Login desde el header o `/login`.
