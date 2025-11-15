@@ -18,7 +18,22 @@ import { UserLayout } from '@/components/layouts/UserLayout';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
 import LandingPage from '@/pages/public/LandingPage';
 
-function Guard({ children, requireAdmin }: { children: ReactNode; requireAdmin?: boolean }) {
+function PrivateUser({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) navigate('/');
+  }, [isAuthenticated, isLoading, navigate]);
+
+  if (isLoading) return <div className="flex h-screen items-center justify-center">Cargando sesión...</div>;
+  if (!isAuthenticated) return null;
+
+  return <>{children}</>;
+}
+
+function PrivateAdmin({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
   const [, navigate] = useLocation();
 
@@ -28,24 +43,20 @@ function Guard({ children, requireAdmin }: { children: ReactNode; requireAdmin?:
       navigate('/');
       return;
     }
-    if (requireAdmin && !isAdmin) {
+    if (!isAdmin) {
       navigate('/app/inicio');
     }
-  }, [isAuthenticated, isLoading, navigate, isAdmin, requireAdmin]);
+  }, [isAuthenticated, isAdmin, isLoading, navigate]);
 
-  if (isLoading) {
-    return <div className=\"flex h-screen items-center justify-center\">Cargando sesión...</div>;
-  }
-
-  if (!isAuthenticated) return null;
-  if (requireAdmin && !isAdmin) return null;
+  if (isLoading) return <div className="flex h-screen items-center justify-center">Cargando sesión...</div>;
+  if (!isAuthenticated || !isAdmin) return null;
 
   return <>{children}</>;
 }
 
 function UserRoutes() {
   return (
-    <Guard>
+    <PrivateUser>
       <UserLayout>
         <Switch>
           <Route path="/app/inicio" component={DashboardPage} />
@@ -60,21 +71,29 @@ function UserRoutes() {
           <Route component={NotFound} />
         </Switch>
       </UserLayout>
-    </Guard>
+    </PrivateUser>
   );
 }
 
 function AdminRoutes() {
   return (
-    <Guard requireAdmin>
+    <PrivateAdmin>
       <AdminLayout>
         <Switch>
           <Route path="/admin/dashboard" component={AdminDashboardPage} />
+          <Route path="/admin/usuarios" component={AdminPlaceholderPage as any} />
+          <Route path="/admin/espacios" component={AdminPlaceholderPage as any} />
+          <Route path="/admin/categorias" component={AdminPlaceholderPage as any} />
+          <Route path="/admin/eventos" component={AdminPlaceholderPage as any} />
+          <Route path="/admin/bloqueos" component={AdminPlaceholderPage as any} />
+          <Route path="/admin/aprobaciones" component={AdminPlaceholderPage as any} />
+          <Route path="/admin/reportes" component={AdminPlaceholderPage as any} />
+          <Route path="/admin/configuracion" component={AdminPlaceholderPage as any} />
           <Route path="/admin/:section*" component={AdminPlaceholderPage as any} />
           <Route component={NotFound} />
         </Switch>
       </AdminLayout>
-    </Guard>
+    </PrivateAdmin>
   );
 }
 
