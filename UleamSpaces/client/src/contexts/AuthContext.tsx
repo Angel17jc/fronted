@@ -1,68 +1,93 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { authApi, Credentials, UserProfile } from '@/api/rest/authApi';
+import { authStorage } from '@/lib/auth-storage';
 
-// Tipos de roles de usuario
-export type UserRole = 'usuario' | 'admin';
-
-// Interfaz del usuario
-export interface User {
-  id: string;
-  nombre: string;
-  email: string;
-  rol: UserRole;
-  avatar?: string;
-  estado: 'activo' | 'inactivo';
-}
-
-// Interfaz del contexto de autenticación
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
+  token: string | null;
+  isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (user: User) => void;
-  logout: () => void;
+  isLoading: boolean;
+  login: (credentials: Credentials) => Promise<void>;
+  logout: () => Promise<void>;
+  setUser: (user: UserProfile | null) => void;
   switchRole: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Estado del usuario actual (mock para desarrollo)
-  const [user, setUser] = useState<User | null>({
-    id: '1',
-    nombre: 'Juan Pérez',
-    email: 'juan.perez@uleam.edu.ec',
-    rol: 'admin',
-    avatar: 'JP',
-    estado: 'activo',
-  });
+  const [user, setUser] = useState<UserProfile | null>(authStorage.getUser());
+  const [token, setToken] = useState<string | null>(authStorage.getToken());
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Verificar si el usuario es administrador
-  const isAdmin = user?.rol === 'admin';
+  useEffect(() => {
+    const savedToken = authStorage.getToken();
+    if (!savedToken) {
+      setIsLoading(false);
+      return;
+    }
 
-  // Función para iniciar sesión
-  const login = (newUser: User) => {
-    setUser(newUser);
+    authApi
+      .me()
+      .then((me) => {
+        setUser(me);
+        authStorage.setUser(me);
+        setToken(savedToken);
+      })
+      .catch(() => {
+        authStorage.clearAll();
+        setUser(null);
+        setToken(null);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const login = async (credentials: Credentials) => {
+    const { token: newToken, user: authenticatedUser } = await authApi.login(credentials);
+    authStorage.setToken(newToken);
+    authStorage.setUser(authenticatedUser);
+    setToken(newToken);
+    setUser(authenticatedUser);
   };
 
-  // Función para cerrar sesión
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.warn('[auth] logout remoto falló', error);
+    }
+    authStorage.clearAll();
+    setToken(null);
     setUser(null);
   };
 
-  // Función para cambiar entre roles (solo para desarrollo)
   const switchRole = () => {
-    if (user) {
-      setUser({
-        ...user,
-        rol: user.rol === 'admin' ? 'usuario' : 'admin',
-      });
-    }
+    setUser((prev) => {
+      if (!prev) return prev;
+      const nextRole = prev.rol === 'admin' ? 'usuario' : 'admin';
+      const updated = { ...prev, rol: nextRole };
+      authStorage.setUser(updated);
+      return updated;
+    });
   };
 
-  return (
-    <AuthContext.Provider value={{ user, isAdmin, login, logout, switchRole }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      isAuthenticated: Boolean(token && user),
+      isAdmin: user?.rol === 'admin',
+      isLoading,
+      login,
+      logout,
+      setUser,
+      switchRole,
+    }),
+    [user, token, isLoading],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

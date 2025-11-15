@@ -239,3 +239,13 @@ Universidad Laica Eloy Alfaro de Manabí (ULEAM)
 ---
 
 **Desarrollado con ❤️ para ULEAM**
+
+## 🔄 Arquitectura actualizada (solo frontend)
+- Este repo queda como **solo frontend** (React + Vite). Los servicios REST (Python), GraphQL (Go) y WebSocket (TS/Node) se consumen como endpoints externos.
+- Variables de entorno (configurar en `.env.local`):
+  - `VITE_REST_BASE_URL`: base del servicio REST.
+  - `VITE_GRAPHQL_URL`: endpoint del servicio GraphQL.
+  - `VITE_WS_URL`: URL del servidor WebSocket.
+- Clientes ya preparados: `client/src/api/rest/*`, `client/src/api/graphql/*`, `client/src/api/websocket/*` y hooks (`useWebSocket`, `useNotificaciones`).
+- Scripts npm: `npm run dev` (solo Vite), `npm run build`, `npm run preview`.
+- El router (`client/src/router/AppRouter.tsx`) protege rutas privadas con AuthContext y deja solo `/login` como pública.
